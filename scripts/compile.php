@@ -5,8 +5,12 @@ foreach (glob(dirname(__FILE__) . '/../lib/*.php') as $lib) {
     $libs .= implode('', array_slice(file($lib), 1));
 }
 
-$output = shrink(preg_replace('~/\*\s*LIBS\s*\*/.*/\*\s*ENDLIBS\s*\*/~', $libs,
-    file_get_contents(dirname(__FILE__) . '/../bin/pacc')));
+list($head, $tail) = preg_split(
+    '~/\*\s*LIBS\s*\*/.*/\*\s*ENDLIBS\s*\*/~', 
+    file_get_contents(dirname(__FILE__) . '/../bin/pacc')
+);
+
+$output = shrink($head . $libs . $tail);
 
 if (!isset($_SERVER['argv'][1]) || in_array('-h', $_SERVER['argv'])) {
     die($_SERVER['argv'][0] . " [ -h ] <output>\n");
