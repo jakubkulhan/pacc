@@ -25,7 +25,7 @@ class Calculator
 
     public function calculate($expression)
     {
-        $this->tokens = str_split($expression);
+        $this->tokens = str_split(preg_replace('~[^0-9+()*/-]+~', '', $expression));
         reset($this->tokens);
         return $this->doParse();
     }
@@ -39,7 +39,7 @@ expression
     ;
 
 factor
-    : number { $$ = $1; }
+    : number { $$ = intval($1); }
     | '(' expression ')' { $$ = $2; }
     ;
 
@@ -52,12 +52,12 @@ component
 digit: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
 
 number
-    : digit { $$ = intval($1); }
-    | digit number { $$ = intval($1) * pow(10, strlen(strval($2))) + $2; }
+    : digit { $$ = $1; }
+    | digit number { $$ = $1 . $2; }
     ;
 
 ---
 }
 
 $calculator = new Calculator;
-echo $calculator->calculate(preg_replace('~[^0-9+()*/-]+~', '', file_get_contents('php://stdin'))) . "\n";
+echo $calculator->calculate(file_get_contents('php://stdin')) . "\n";
