@@ -147,8 +147,9 @@ class PaccGenerator
                     $cur =& $cur[$k];
                 }
 
-                if ($code !== NULL) { $cur['$'] = trim($code->content); }
-                else                { $cur['$'] = '$$ = $1;'; }
+                if ($code !== NULL)         { $cur['$'] = trim($code->content); }
+                else if (!empty($terms))    { $cur['$'] = '$$ = $1;'; }
+                else                        { $cur['$'] = '$$ = TRUE;'; }
             }
 
             $ret[$name] = $this->treelifting($ret[$name]);
