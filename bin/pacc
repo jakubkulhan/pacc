@@ -1,0 +1,69 @@
+#!/usr/bin/php
+<?php
+/*LIBS*/foreach (glob(dirname(__FILE__) . '/../lib/*.php') as $_) require_once $_;/*ENDLIBS*/
+
+$opts = array_merge(array(
+    'i' => 'php://stdin', 
+    'o' => 'php://stdout',
+    'p' => 'self::',
+    'e' => '\n',
+    'n' => '    ',
+), getopt('hi:o:fp:e:n:'));
+
+if (isset($opts['h'])) { $h = <<<E
+{$_SERVER['argv'][0]} [ -h ] [ -i <input> ] [ -f ] [ -o <output> ] [ -p <prefix> ] [ -e <eol> ] [ -n <indent> ]
+    -h              show this help
+    -i <input>      input file
+    -f              force output file overwrite if exists
+    -o <output>     output file
+    -p <prefix>     constants' prefix
+    -e <eol>        end of line (espace sequences can be used)
+    -n <indent>     one level indentation string (escape sequences can be used)
+
+E;
+die($h); }
+
+if ($opts['i'] === '-') { $opts['i'] = 'php://stdin'; }
+if ($opts['o'] === '-') { $opts['o'] = 'php://stdout'; }
+$opts['e'] = eval('return "' . $opts['e'] . '";');
+$opts['n'] = eval('return "' . $opts['n'] . '";');
+
+try {
+    $lines = @file($opts['i']);
+    if ($lines === FALSE) { throw new Exception('Cannot read input file.'); }
+
+    $generator = PaccGenerator::fromString(implode('', $lines));
+    $generator->indent = $opts['n'];
+    $generator->eol = $opts['e'];
+    $generator->terminal_prefix = $opts['p'];
+
+    if (file_exists($opts['o']) && !isset($opts['f'])) {
+        throw new Exception('Output file already exists. Use -f to force overwrite.');
+    }
+    $generator->writeToFile($opts['o']);
+
+} catch (PaccUnexpectedToken $e) {
+    file_put_contents('php://stderr', 
+        $e->getMessage() . PHP_EOL . 
+        ((string) $e->token->line) . ': ' . rtrim($lines[$e->token->line - 1]) . PHP_EOL .
+        str_repeat(' ', strlen((string) $e->token->line) + $e->token->position + 1) . '^' . PHP_EOL
+    );
+    die(-1);
+} catch (PaccUnexpectedEnd $e) {
+    file_put_contents('php://stderr', 
+        $e->getMessage() . PHP_EOL
+    );
+    die(-1);
+} catch (PaccBadIdentifier $e) {
+    file_put_contents('php://stderr', 
+        $e->getMessage() . PHP_EOL . 
+        ((string) $e->token->line) . ': ' . rtrim($lines[$e->token->line - 1]) . PHP_EOL .
+        str_repeat(' ', strlen((string) $e->token->line) + $e->token->position + 1) . '^' . PHP_EOL
+    );
+    die(-1);
+} catch (Exception $e) {
+    file_put_contents('php://stderr', 
+        $e->getMessage() . PHP_EOL
+    );
+    die(-1);
+}
