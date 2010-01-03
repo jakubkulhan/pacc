@@ -1,5 +1,5 @@
 <?php
-class PaccParserGenerated
+class PaccParser
 {
 
     const ID = PaccToken::ID,
@@ -63,7 +63,7 @@ expression
     ;
 
 terms 
-    : term                          { $$ = $1; }
+    : term                          { $$ = array($1); }
     | term terms                    { $$ = array_merge(array($1), $2); }
     |                               { $$ = array(); }
     ;
