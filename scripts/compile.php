@@ -6,7 +6,7 @@ foreach (glob(dirname(__FILE__) . '/../lib/*.php') as $lib) {
 }
 
 list($head, $tail) = preg_split(
-    '~/\*\s*LIBS\s*\*/.*/\*\s*ENDLIBS\s*\*/~', 
+    '~/\*\s*LIBS\s*\*/.*/\*\s*ENDLIBS\s*\*/~s', 
     file_get_contents(dirname(__FILE__) . '/../bin/pacc')
 );
 

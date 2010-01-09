@@ -2,140 +2,125 @@
 /**
  * Converts string into stream of tokens
  */
-class PaccLexer implements Iterator
+class PaccLexer implements PaccTokenStream
 {
-    const
-        IDREGEX = '/^([a-zA-Z][a-zA-Z_]*)/',
-        STRINGREGEX = '/^(\'[^\']+\'|"[^"]+"|`[^`]+`)/',
-        SPECIALREGEX = '/^(:|\||\{|\}|;)/';
-
     /**
-     * Conversion between special characters and token types
+     * Mapping from token regexes to token classes
      * @var array
      */
-    private static $conv = array(
-        ':' => PaccToken::RULESTART,
-        ';' => PaccToken::RULEEND,
-        '|' => PaccToken::ALTER,
-        '{' => PaccToken::CODESTART,
-        '}' => PaccToken::CODEEND,
+    private static $map = array(
+        '/^(\s+)/Ss'                                                    => 'PaccWhitespaceToken',
+        '/^([a-zA-Z][a-zA-Z_]*)/S'                                      => 'PaccIdToken',
+        '/^(\'(?:\\\'|[^\']+)\'|"(?:\\"|[^"])+"|`(?:\\`|[^`])+`)/SU'    => 'PaccStringToken',
+        '/^(@|\\\\|\\.|=|\(|\)|:|\||\{|\}|;)/S'                         => 'PaccSpecialToken',
+        '/^(\/\*.*\*\/)/SUs'                                            => 'PaccCommentToken',
+        '/^(.)/Ss'                                                      => 'PaccBadToken',
     );
 
     /**
-     * Tokens
+     * String to tokenize
+     * @var string
+     */
+    private $string = '';
+
+    /**
+     * Current token
+     * @var PaccToken
+     */
+    private $current = NULL;
+
+    /**
+     * Current line of string to tokenize
+     * @var
+     */
+    private $line = 1;
+
+    /**
+     * Current position on current line of string to tokenize
+     * @var int
+     */
+    private $position = 1;
+
+    /**
+     * Buffered tokens
      * @var array
      */
-    private $tokens = array();
+    private $buffer = array();
 
     /**
      * Initializes lexer
-     * @param string
+     * @param string string to tokenize
      * @param int
      */
-    public function __construct($s, $start_line = 1)
+    public function __construct($string = '', $start_line = 1)
     {
-        $line = $start_line;
-        $pos = 1;
-
-        $s = str_replace(array("\r\n", "\r"), "\n", $s);
-
-        while (!empty($s)) {
-            if (preg_match('/^(\s+)/', $s, $m)) {
-                // intentionally left blank
-
-            } else if (preg_match(self::IDREGEX, $s, $m)) {
-                $this->tokens[] = new PaccToken(PaccToken::ID, $m[1], $line, $pos);
-
-            } else if (preg_match(self::STRINGREGEX, $s, $m)) {
-                $this->tokens[] = new PaccToken(PaccToken::STRING, $m[1], $line, $pos);
-
-            } else if (preg_match(self::SPECIALREGEX, $s, $m)) {
-                $this->tokens[] = new PaccToken(self::$conv[$m[1]], $m[1], $line, $pos);
-
-                if (end($this->tokens)->type === PaccToken::CODESTART) {
-                    $offset = 0;
-                    do {
-                        if (($rbrace = strpos($s, '}', $offset)) === FALSE) {
-                            $this->tokens[] = new PaccToken(NULL, substr($s, 1), $line, $pos + 1);
-                            return ;
-                        }
-
-                        $offset = $rbrace + 1;
-                        $code = substr($s, 1, $rbrace - 1);
-
-                    } while (substr_count($code, '{') !== substr_count($code, '}'));
-
-                    $this->tokens[] = new PaccToken(PaccToken::CODE, $code, $line, $pos + 1);
-                    $m[1] .= $code;
-                }
-
-            } else {
-                $m = array(1 => $s[0]);
-                $this->tokens[] = new PaccToken(NULL, $m[1], $line, $pos);
-            }
-
-            $lines = substr_count($m[1], "\n");
-            $line += $lines;
-            if ($lines > 0) { $pos = strlen(end(explode("\n", $m[1]))) + 1; }
-            else { $pos += strlen($m[1]); }
-            $s = substr($s, strlen($m[1]));
-        }
-
-        reset($this->tokens);
+        $this->line = $start_line;
+        $this->string = $string;
     }
 
     /**
-     * Returns current token
+     * Get current token
      * @return PaccToken
      */
     public function current()
     {
-        return current($this->tokens);
+        if ($this->current === NULL) { $this->lex(); }
+        return $this->current;
     }
 
     /**
-     * Returns current key
-     * @return int
-     */
-    public function key()
-    {
-        return key($this->tokens);
-    }
-
-    /**
-     * Advances token stream pointer
-     * @return PaccToken new current token
+     * Synonynm for lex()
+     * @return PaccToken
      */
     public function next()
     {
-        return next($this->tokens);
+        return $this->lex();
     }
 
     /**
-     * Rewinds token strem's pointer one place
-     * @return PaccToken new current token
+     * Get next token
+     * @return PaccToken
      */
-    public function prev()
+    public function lex()
     {
-        return prev($this->tokens);
-    }
+        if (!empty($this->buffer)) { return $this->current = array_shift($this->buffer); }
+        if (empty($this->string)) { return $this->current = new PaccEndToken(NULL, $this->line, $this->position); }
 
-    /**
-     * Rewinds stream's pointer
-     * @return PaccToken returns first token
-     */
-    public function rewind()
-    {
-        return reset($this->tokens);
-    }
+        foreach (self::$map as $regex => $class) {
+            if (!preg_match($regex, $this->string, $m)) { continue; }
 
-    /**
-     * Checks if there are any more tokens in stream
-     * @return bool TRUE if there are still some tokens to process
-     */
-    public function valid()
-    {
-        return $this->current() !== FALSE;
+            $token = new $class($m[1], $this->line, $this->position);
+
+            if ($token instanceof PaccSpecialToken && $m[1] === '{') {
+                $offset = 0;
+                do {
+                    if (($rbrace = strpos($this->string, '}', $offset)) === FALSE) {
+                        array_push($this->buffer, new PaccCodeToken($this->string, $this->line, $this->position + 1));
+                        return $this->current = $token;
+                    }
+
+                    $offset = $rbrace + 1;
+                    $code = substr($this->string, 1, $rbrace - 1);
+
+                } while (substr_count($code, '{') !== substr_count($code, '}'));
+
+                array_push($this->buffer, new PaccCodeToken($code, $this->line, $this->position + 1));
+                $m[1] .= $code;
+            }
+
+            break;
+        }
+
+        $lines = substr_count($m[1], "\n") + 
+            substr_count($m[1], "\r\n") + substr_count($m[1], "\r");
+        $this->line += $lines;
+
+        if ($lines > 0) { $this->position = strlen(end(preg_split("/\r?\n|\r/", $m[1]))) + 1; }
+        else { $this->position += strlen($m[1]); }
+
+        $this->string = substr($this->string, strlen($m[1]));
+
+        return $this->current = $token;
     }
 
     /**
@@ -144,9 +129,9 @@ class PaccLexer implements Iterator
      * @param int
      * @return self
      */
-    public static function fromString($s, $start_line = 1)
+    public static function fromString($string, $start_line = 1)
     {
-        return new self($s, $start_line);
+        return new self($string, $start_line);
     }
 
     /**

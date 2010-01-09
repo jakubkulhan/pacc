@@ -1,9 +1,18 @@
-<?php
+grammar json
+
+option (
+    eol = "\n";
+    indentation = "    ";
+    parse = "doParse";
+)
+
+@header {
 /**
  * JSON encoding and decoding; does not depend on any PHP module
  */
-class json
-{
+}
+
+@inner {
     const
         STRING = 1,
         NUMBER = 2,
@@ -104,77 +113,21 @@ class json
     private function parse($json)
     {
         $this->json = ltrim($json);
-        $this->nextToken();
+        $this->_nextToken();
         try {
-            return $this->doParse();
+            $ret = $this->doParse();
+            if ($ret === 0) { return NULL; }
+            return $ret;
         } catch (Exception $e) {
             return NULL;
         }
     }
 
     /**
-     * @return stdClass
-     */
-    private function currentToken()
-    {
-        return $this->token;
-    }
-
-    /**
-     * @return int
-     */
-    private function currentTokenType()
-    {
-        return $this->token->type;
-    }
-
-    /**
+     * Decode JSON encoded string
+     * @param string
      * @return string
      */
-    private function currentTokenContent()
-    {
-        return $this->token->content;
-    }
-
-    /**
-     * @return void
-     */
-    private function nextToken()
-    {
-        if (empty($this->json)) {
-            $this->token = (object) array(
-                'type' => NULL,
-                'content' => NULL
-            );
-
-            return ;
-        }
-
-        $ok = FALSE;
-
-        foreach (array(
-            array(self::STRING, self::STRINGREGEX),
-            array(self::NUMBER, self::NUMBERREGEX),
-            array(self::SPECIAL, self::SPECIALREGEX),
-            array(self::KEYWORD, self::KEYWORDREGEX)) as $pair)
-        {
-            if (preg_match($pair[1], $this->json, $m)) {
-                $this->token = (object) array(
-                    'type' => $pair[0], 
-                    'content' => $m[1]
-                );
-
-                $ok = TRUE;
-
-                break;
-            }
-        }
-
-        if (!$ok) { throw new Exception(NULL); }
-
-        $this->json = ltrim(substr($this->json, strlen($m[0])));
-    }
-    
     private function stringDecode($s)
     {
         $ret = '';
@@ -199,21 +152,67 @@ class json
 
         return $ret;
     }
+}
 
----
+@currentToken {
+    return $this->token;
+}
+
+@currentTokenType {
+    return $this->token->type;
+}
+
+@currentTokenLexeme {
+    return $this->token->lexeme;
+}
+
+@nextToken {
+    if (empty($this->json)) {
+        $this->token = (object) array(
+            'type' => NULL,
+            'lexeme' => NULL
+        );
+
+        return ;
+    }
+
+    $ok = FALSE;
+
+    foreach (array(
+        array(self::STRING, self::STRINGREGEX),
+        array(self::NUMBER, self::NUMBERREGEX),
+        array(self::SPECIAL, self::SPECIALREGEX),
+        array(self::KEYWORD, self::KEYWORDREGEX)) as $pair)
+    {
+        if (preg_match($pair[1], $this->json, $m)) {
+            $this->token = (object) array(
+                'type' => $pair[0], 
+                'lexeme' => $m[1]
+            );
+
+            $ok = TRUE;
+
+            break;
+        }
+    }
+
+    if (!$ok) { throw new Exception(NULL); }
+
+    $this->json = ltrim(substr($this->json, strlen($m[0])));
+}
 
 value
-    : STRING { $$ = $this->stringDecode($1->content); }
-    | NUMBER { $$ = floatval($1->content); }
-    | object
+    : STRING { $$ = $this->stringDecode($1->lexeme); }
+    | NUMBER { $$ = floatval($1->lexeme); }
+    | object { if (!$this->associative) { $1 = (object) $1; } $$ = $1; }
     | array
     | 'true' { $$ = TRUE; }
     | 'false' { $$ = FALSE; }
-    | 'null' { $$ = NULL; }
+    | 'null' { $$ = 0; }
     ;
 
 object
-    : '{' pairs '}' { $$ = $2; if (!$this->associative) { $$ = (object) $2; } }
+    : '{' pairs '}' { $$ = $2; }
     ;
 
 pairs
@@ -223,7 +222,7 @@ pairs
     ;
 
 pair
-    : STRING ':' value { $$ = array($1->content, $3); }
+    : STRING ':' value { if ($3 === 0) { $3 = NULL; } $$ = array($1->lexeme, $3); }
     ;
 
 array
@@ -231,11 +230,7 @@ array
     ;
 
 values
-    : value { $$ = array($1); }
-    | value ',' values { $$ = array_merge(array($1), $3); }
+    : value { if ($1 === 0) { $1 = NULL; } $$ = array($1); }
+    | value ',' values { if ($1 === 0) { $1 = NULL; } $$ = array_merge(array($1), $3); }
     | { $$ = array(); }
     ;
-
----
-
-}

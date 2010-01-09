@@ -1,41 +1,85 @@
 #!/usr/bin/php
 <?php
-/*LIBS*/foreach (glob(dirname(__FILE__) . '/../lib/*.php') as $_) require_once $_;/*ENDLIBS*/
+/*LIBS*/
+require_once dirname(dirname(__FILE__)) . '/lib/exceptions.php';
 
+require_once dirname(dirname(__FILE__)) . '/lib/PaccSet.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccGrammar.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccSymbol.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccNonterminal.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccTerminal.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccProduction.php';
+
+require_once dirname(dirname(__FILE__)) . '/lib/PaccToken.php';
+require_once dirname(dirname(__FILE__)) . '/lib/tokens.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccTokenStream.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccTokenFilterOutStream.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccLexer.php';
+
+require_once dirname(dirname(__FILE__)) . '/lib/PaccParser.php';
+
+require_once dirname(dirname(__FILE__)) . '/lib/PaccRDGenerator.php';
+/*ENDLIBS*/
+
+$algorithms = array(
+    'RD' => 'recursive descent'
+);
 $opts = array_merge(array(
-    'i' => 'php://stdin', 
-    'o' => 'php://stdout',
-    'p' => 'self::',
-    'e' => '\n',
-    'n' => '    ',
-), getopt('hi:o:fp:e:n:'));
+    'i' => '-', 
+    'o' => '-'
+), getopt('hi:o:fa:'));
 
 if (isset($opts['h'])) { $h = <<<E
-{$_SERVER['argv'][0]} [ -h ] [ -i <input> ] [ -f ] [ -o <output> ] [ -p <prefix> ] [ -e <eol> ] [ -n <indent> ]
+{$_SERVER['argv'][0]} [ -h ] [ -i <input> ] [ -f ] [ -o <output> ] [ -a <algorithm> ]
     -h              show this help
     -i <input>      input file
     -f              force output file overwrite if exists
     -o <output>     output file
-    -p <prefix>     constants' prefix
-    -e <eol>        end of line (espace sequences can be used)
-    -n <indent>     one level indentation string (escape sequences can be used)
+    -a <algorithm>  algorithm for generated  parser (default RD)
+                    (use `help` to show available algorithms)
 
 E;
 die($h); }
 
+if (isset($opts['a']) && $opts['a'] === 'help') {
+    foreach ($algorithms as $algorithm => $description) {
+        echo $algorithm . ': ' . $description . PHP_EOL;
+    }
+    die();
+}
+
 if ($opts['i'] === '-') { $opts['i'] = 'php://stdin'; }
 if ($opts['o'] === '-') { $opts['o'] = 'php://stdout'; }
-$opts['e'] = eval('return "' . $opts['e'] . '";');
-$opts['n'] = eval('return "' . $opts['n'] . '";');
 
 try {
     $lines = @file($opts['i']);
     if ($lines === FALSE) { throw new Exception('Cannot read input file.'); }
 
-    $generator = PaccGenerator::fromString(implode('', $lines));
-    $generator->indent = $opts['n'];
-    $generator->eol = $opts['e'];
-    $generator->terminal_prefix = $opts['p'];
+    $stream = new PaccTokenFilterOutStream(
+        PaccLexer::fromString(implode('', $lines)),
+        array('PaccWhitespaceToken', 'PaccCommentToken')
+    );
+    $parser = new PaccParser($stream);
+    $grammar = $parser->parse();
+
+    if (empty($grammar->name)) {
+        throw new Exception('`grammar` statement omitted. Cannot generated parser.');
+    }
+
+    if (!isset($opts['a'])) {
+        if (isset($grammar->options['algorithm'])) {
+            $opts['a'] = $grammar->options['algorithm'];
+        } else {
+            $opts['a'] = current(array_keys($algorithms));
+        }
+    }
+
+    if (!isset($algorithms[$opts['a']])) {
+        throw new Exception('Unknown algorithm `' . $opts['a'] . '`.');
+    }
+
+    $generatorclass = 'Pacc' . $opts['a'] . 'Generator';
+    $generator = new $generatorclass($grammar);
 
     if (file_exists($opts['o']) && !isset($opts['f'])) {
         throw new Exception('Output file already exists. Use -f to force overwrite.');

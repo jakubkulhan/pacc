@@ -13,8 +13,8 @@ class PaccUnexpectedToken extends Exception
     {
         $this->token = $t;
         parent::__construct(
-            'Unexcepted token `' . $t->content .
-            '` of type ' . $t->type . 
+            'Unexcepted token `' . $t->lexeme .
+            '` of type ' . get_class($t) . 
             ' on line ' . $t->line . 
             ' at position ' . $t->position .
             '.',
@@ -53,8 +53,8 @@ class PaccBadIdentifier extends Exception
     {
         $this->token = $t;
         parent::__construct(
-            'Bad identifier ' . $t->content . 
-            ' on line ' . $t->line . 
+            'Bad identifier `' . $t->value . 
+            '` on line ' . $t->line . 
             ' at position ' . $t->position .
             '.',
             0,

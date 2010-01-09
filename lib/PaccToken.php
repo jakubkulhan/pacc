@@ -2,27 +2,12 @@
 /**
  * Represents one token
  */
-class PaccToken
+abstract class PaccToken
 {
-    const
-        ID = 1,
-        RULESTART = 2,
-        RULEEND = 3,
-        ALTER = 4,
-        CODESTART = 5,
-        CODE = 6,
-        CODEEND = 7,
-        STRING = 8;
-
-    /**
-     * @var int
-     */
-    public $type;
-
     /**
      * @var string
      */
-    public $content;
+    public $lexeme;
 
     /**
      * @var int
@@ -35,17 +20,30 @@ class PaccToken
     public $position;
 
     /**
+     * @var mixed
+     */
+    public $value;
+
+    /**
      * Initializes instance
-     * @param int
      * @param string
      * @param int
      * @param int
      */
-    public function __construct($type, $content, $line, $position)
+    public function __construct($lexeme, $line, $position)
     {
-        $this->type = $type;
-        $this->content = $content;
+        $this->lexeme = $lexeme;
         $this->line = $line;
         $this->position = $position;
+
+        $this->value();
+    }
+
+    /**
+     * Convert lexeme to value - constructor extension point
+     */
+    protected function value()
+    {
+        $this->value = $this->lexeme;
     }
 }
