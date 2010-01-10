@@ -2,7 +2,7 @@
 /**
  * Generates recursive descent parser
  */
-class PaccRDGenerator
+class PaccRDGenerator extends PaccGenerator
 {
     /**
      * Grammar
@@ -77,7 +77,7 @@ class PaccRDGenerator
      * Generates parser
      * @return string
      */
-    public function generate()
+    protected function generate()
     {
         if ($this->generated === NULL) {
             $this->generated = '';
@@ -99,31 +99,6 @@ class PaccRDGenerator
         }
 
         return $this->generated;
-    }
-
-    /**
-     * Generates parser
-     * @return string
-     */
-    public function __toString()
-    {
-        return $this->generate();
-    }
-
-    /**
-     * Writes generated output to file
-     * @param string|resource
-     * @return int|bool bytes written, FALSE on failure
-     */
-    public function writeToFile($file)
-    {
-        if (is_string($file)) {
-            return @file_put_contents($file, $this->generate());
-        } else if (is_resource($file) && get_resource_type($file) === 'file') {
-            return @fwrite($file, $this->generate());
-        }
-
-        throw new BadMethodCallException('Argument file must be a filename or opened file handle.');
     }
 
     /**

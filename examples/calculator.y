@@ -1,30 +1,50 @@
 grammar Calculator
 
+option (
+    eol         = "\n";
+    indentation = "    ";
+    parse       = "doParse";
+    algorithm   = "LR";
+)
+
 @inner {
-    private $tokens;
+    const NUMBER = 1;
+
+    private $expression;
+    private $token;
 
     public function calculate($expression)
     {
-        $this->tokens = str_split(preg_replace('~[^0-9+()*/-]+~', '', $expression));
-        reset($this->tokens);
+        $this->expression = $expression;
+        $this->_nextToken();
         return $this->doParse();
     }
 }
 
 @currentToken {
-    return current($this->tokens);
+    return $this->token;
 }
 
 @currentTokenType {
+    if (preg_match('~^[0-9]+$~', $this->token)) {
+        return self::NUMBER;
+    }
     return NULL;
 }
 
 @currentTokenLexeme {
-    return current($this->tokens);
+    return $this->token;
 }
 
 @nextToken {
-    return next($this->tokens);
+    if (!preg_match('~^([0-9]+|\(|\)|\+|-|\*|/)~', $this->expression, $m)) {
+        $this->expression = NULL;
+        $this->token = NULL;
+        return;
+    }
+
+    $this->token = $m[1];
+    $this->expression = substr($this->expression, strlen($m[1]));
 }
 
 @footer {
@@ -36,22 +56,17 @@ grammar Calculator
 expression
     : /* nothing */ { $$ = 0; }
     | component { $$ = $1; }
-    | component '+' expression { $$ = $1 + $3; }
+    | expression '+' component { $$ = $1 + $3; }
+    | expression '-' component { $$ = $1 - $3; }
     ;
 
 factor
-    : number { $$ = intval($1); }
+    : NUMBER { $$ = intval($1); }
     | '(' expression ')' { $$ = $2; }
     ;
 
 component
     : factor { $$ = $1; }
-    | factor '*' factor { $$ = $1 * $3; }
+    | component '*' factor { $$ = $1 * $3; }
+    | component '/' factor { $$ = $1 / $3; }
     ;
-
-number
-    : digit { $$ = $1; }
-    | digit number { $$ = $1 . $2; }
-    ;
-
-digit : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;

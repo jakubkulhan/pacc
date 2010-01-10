@@ -1,9 +1,10 @@
 grammar json
 
 option (
-    eol = "\n";
+    eol         = "\n";
     indentation = "    ";
-    parse = "doParse";
+    parse       = "doParse";
+    algorithm   = "LR";
 )
 
 @header {
@@ -205,10 +206,10 @@ value
     : STRING { $$ = $this->stringDecode($1->lexeme); }
     | NUMBER { $$ = floatval($1->lexeme); }
     | object { if (!$this->associative) { $1 = (object) $1; } $$ = $1; }
-    | array
+    | array { $$ = $1; }
     | 'true' { $$ = TRUE; }
     | 'false' { $$ = FALSE; }
-    | 'null' { $$ = 0; }
+    | 'null' { $$ = NULL; }
     ;
 
 object
@@ -222,7 +223,7 @@ pairs
     ;
 
 pair
-    : STRING ':' value { if ($3 === 0) { $3 = NULL; } $$ = array($1->lexeme, $3); }
+    : STRING ':' value { $$ = array($1->lexeme, $3); }
     ;
 
 array
@@ -230,7 +231,7 @@ array
     ;
 
 values
-    : value { if ($1 === 0) { $1 = NULL; } $$ = array($1); }
-    | value ',' values { if ($1 === 0) { $1 = NULL; } $$ = array_merge(array($1), $3); }
+    : value { $$ = array($1); }
+    | value ',' values { $$ = array_merge(array($1), $3); }
     | { $$ = array(); }
     ;

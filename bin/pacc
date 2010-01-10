@@ -18,11 +18,18 @@ require_once dirname(dirname(__FILE__)) . '/lib/PaccLexer.php';
 
 require_once dirname(dirname(__FILE__)) . '/lib/PaccParser.php';
 
+require_once dirname(dirname(__FILE__)) . '/lib/PaccGenerator.php';
+
 require_once dirname(dirname(__FILE__)) . '/lib/PaccRDGenerator.php';
+
+require_once dirname(dirname(__FILE__)) . '/lib/PaccLRGenerator.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccLRItem.php';
+require_once dirname(dirname(__FILE__)) . '/lib/PaccLRJump.php';
 /*ENDLIBS*/
 
 $algorithms = array(
-    'RD' => 'recursive descent'
+    'RD' => 'recursive descent',
+    'LR' => 'canonical LR(1)',
 );
 $opts = array_merge(array(
     'i' => '-', 

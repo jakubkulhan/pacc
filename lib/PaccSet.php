@@ -2,7 +2,7 @@
 /**
  * Set implementation - always holds only one copy of some value
  */
-class PaccSet implements Iterator
+class PaccSet implements Iterator, Countable
 {
     /**
      * All values in set
@@ -30,6 +30,30 @@ class PaccSet implements Iterator
     }
 
     /**
+     * @return bool
+     */
+    public function __eq($o)
+    {
+        if ($o instanceof self && count($o->set) === count($this->set)) {
+            foreach ($o as $item) {
+                if (!$this->contains($item)) { return FALSE; }
+            }
+
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    public function __toString()
+    {
+        $ret = "{\n";
+        foreach ($this->set as $item) { $ret .= '    ' . (string) $item . "\n"; }
+        $ret .= "}\n";
+        return $ret;
+    }
+
+    /**
      * Return allowed type
      * @return string
      */
@@ -44,6 +68,14 @@ class PaccSet implements Iterator
      */
     public function add($item)
     {
+        if ($item instanceof self) {
+            foreach ($item->set as $i) {
+                $this->add($i);
+            }
+
+            return;
+        }
+
         $this->checkType($item);
         $hash = $this->hash($item);
         if (!isset($this->set[$hash]) && $this->tryEq($item) === NULL) {
@@ -58,6 +90,14 @@ class PaccSet implements Iterator
      */
     public function contains($item)
     {
+        if ($item instanceof self) {
+            foreach ($item->set as $i) {
+                if (!$this->contains($i)) { return FALSE; }
+            }
+
+            return TRUE;
+        }
+
         $this->checkType($item);
         $hash = $this->hash($item);
         return isset($this->set[$hash]) || $this->tryEq($item) !== NULL;
@@ -88,10 +128,19 @@ class PaccSet implements Iterator
     {
         $this->checkType($item);
         $hash = $this->hash($item);
-        if (!isset($this->set[$hash]) || ($hash = $this->tryEq($item)) === NULL) {
+        if (!isset($this->set[$hash]) && ($hash = $this->tryEq($item)) === NULL) {
             return NULL;
         }
         return $this->set[$hash];
+    }
+
+    /**
+     * Check if set is empty
+     * @return bool
+     */
+    public function isEmpty()
+    {
+        return count($this->set) === 0;
     }
 
     /**
@@ -139,6 +188,15 @@ class PaccSet implements Iterator
     }
 
     /**
+     * Count items
+     * @return int
+     */
+    public function count()
+    {
+        return count($this->set);
+    }
+
+    /**
      * Checks type
      * @param mixed
      * @return void
@@ -157,7 +215,7 @@ class PaccSet implements Iterator
             throw new InvalidArgumentException(
                 'Bad type - expected ' .
                 $this->type .
-                ', given' .
+                ', given ' .
                 (gettype($val)) . (is_object($val) ? ' (' . get_class($val) . ')' : '') .
                 '.'
             );

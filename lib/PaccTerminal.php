@@ -26,4 +26,23 @@ class PaccTerminal extends PaccSymbol
         $this->type = $type;
         $this->value = $value;
     }
+
+    /**
+     * @return bool
+     */
+    public function __eq($o)
+    {
+        if ($o instanceof self && $o->name === $this->name &&
+            $o->type === $this->type && $o->value === $this->value)
+        {
+            return TRUE;
+        }
+
+        return FALSE;
+    }
+
+    public function __toString()
+    {
+        return '`' . $this->name . '`';
+    }
 }

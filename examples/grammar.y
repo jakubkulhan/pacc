@@ -4,6 +4,7 @@ option (
    eol          = "\n";
    indentation  = "    ";
    parse        = "doParse";
+   algorithm    = "RD";
 )
 
 @header {
@@ -193,13 +194,17 @@ expressions
     ;
 
 expression 
-    : terms { $$ = array($1, NULL); }
-    | terms '{' CODE '}' { $$ = array($1, $3->value); }
+    : terms_or_nothing { $$ = array($1, NULL); }
+    | terms_or_nothing '{' CODE '}' { $$ = array($1, $3->value); }
+    ;
+
+terms_or_nothing
+    : /* nothing */ { $$ = array(); }
+    | terms { $$ = $1; }
     ;
 
 terms 
-    : /* nothing */ { $$ = array(); }
-    | term  { $$ = array($1); }
+    : term  { $$ = array($1); }
     | term terms { $$ = array_merge(array($1), $2); }
     ;
 

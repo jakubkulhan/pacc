@@ -33,7 +33,7 @@ abstract class PaccSymbol
      */
     public function __eq($o)
     {
-        if ($o instanceof self && $o->name === $this->name) { return TRUE; }
+        if (get_class($o) === get_class($this) && $o->name === $this->name) { return TRUE; }
         return FALSE;
     }
 }
