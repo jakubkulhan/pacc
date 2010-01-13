@@ -1,6 +1,6 @@
 # pacc – PHP yACC
 
-Parser generator (currently generates recursive descent parser) for PHP.
+Parser generator (currently generates recursive descent parser and canonical LR(1) parser) for PHP.
 
 ## Get ready
 
@@ -14,11 +14,15 @@ There is executable `bin/pacc`. However it is dependant on its location in files
 
 Files consumed by `pacc` are structured like this:
 
-    header
-    ---
-    rules
-    ---
-    footer
+    grammar <<parser_name>>;
+
+    option <<option_name>> = <<option_value>>;
+
+    @<<code>> {
+        <<php code>>
+    }
+
+    <<rules>>
 
 Rules are compiled into PHP parser code, header and footer are left as they are.
 
