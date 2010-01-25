@@ -100,10 +100,16 @@ class PaccLexer implements PaccTokenStream
                     }
 
                     $offset = $rbrace + 1;
-                    $code = substr($this->string, 1, $rbrace - 1);
+                    $code = substr($this->string, 0, $rbrace + 1);
+                    $test = preg_replace('#"(\\\\"|[^"])*$
+                                          |"(\\\\"|[^"])*"
+                                          |\'(\\\\\'|[^\'])*\'
+                                          |\'(\\\\\'|[^\'])*$
+                                          #x', '', $code);
 
-                } while (substr_count($code, '{') !== substr_count($code, '}'));
+                } while (substr_count($test, '{') !== substr_count($test, '}'));
 
+                $code = substr($code, 1, strlen($code) - 2);
                 array_push($this->buffer, new PaccCodeToken($code, $this->line, $this->position + 1));
                 $m[1] .= $code;
             }
