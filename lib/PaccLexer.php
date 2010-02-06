@@ -101,10 +101,10 @@ class PaccLexer implements PaccTokenStream
 
                     $offset = $rbrace + 1;
                     $code = substr($this->string, 0, $rbrace + 1);
-                    $test = preg_replace('#"(\\\\"|[^"])*$
-                                          |"(\\\\"|[^"])*"
-                                          |\'(\\\\\'|[^\'])*\'
-                                          |\'(\\\\\'|[^\'])*$
+                    $test = preg_replace($r = '#"((?<!\\\\)\\\\"|[^"])*$
+                                          |"((?<!\\\\)\\\\"|[^"])*"
+                                          |\'((?<!\\\\)\\\\\'|[^\'])*\'
+                                          |\'((?<!\\\\)\\\\\'|[^\'])*$
                                           #x', '', $code);
 
                 } while (substr_count($test, '{') !== substr_count($test, '}'));
