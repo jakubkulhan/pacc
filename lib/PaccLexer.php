@@ -11,7 +11,7 @@ class PaccLexer implements PaccTokenStream
     private static $map = array(
         '/^(\s+)/Ss'                                                    => 'PaccWhitespaceToken',
         '/^([a-zA-Z][a-zA-Z_]*)/S'                                      => 'PaccIdToken',
-        '/^(\'(?:\\\'|[^\']+)\'|"(?:\\"|[^"])+"|`(?:\\`|[^`])+`)/SU'    => 'PaccStringToken',
+        '/^(\'(?:\\\'|[^\'])*\'|"(?:\\"|[^"])*"|`(?:\\`|[^`])*`)/SU'    => 'PaccStringToken',
         '/^(@|\\\\|\\.|=|\(|\)|:|\||\{|\}|;)/S'                         => 'PaccSpecialToken',
         '/^(\/\*.*\*\/)/SUs'                                            => 'PaccCommentToken',
         '/^(.)/Ss'                                                      => 'PaccBadToken',
